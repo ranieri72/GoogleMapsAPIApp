@@ -34,7 +34,7 @@ public class RotaTask extends AsyncTaskLoader<List<LatLng>> {
 
     @Override
     public List<LatLng> loadInBackground() {
-        mRota = RotaHttp.carregarRota(mOrigem, mDestino, RotaHttp.transit);
+        mRota = RotaHttp.carregarRota(mOrigem, mDestino, RotaHttp.driving);
         return mRota;
     }
 }

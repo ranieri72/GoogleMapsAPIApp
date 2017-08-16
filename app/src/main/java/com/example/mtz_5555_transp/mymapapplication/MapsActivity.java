@@ -1,16 +1,13 @@
 package com.example.mtz_5555_transp.mymapapplication;
 
 import android.Manifest;
-import android.app.PendingIntent;
 import android.content.DialogInterface;
-import android.content.Intent;
 import android.content.pm.PackageManager;
 import android.graphics.Color;
 import android.location.Address;
 import android.location.Location;
 import android.os.Bundle;
 import android.os.Handler;
-import android.os.Looper;
 import android.os.Parcelable;
 import android.os.PersistableBundle;
 import android.support.v4.app.ActivityCompat;
@@ -24,12 +21,12 @@ import android.widget.EditText;
 import android.widget.ImageButton;
 import android.widget.LinearLayout;
 import android.widget.TextView;
+import android.widget.Toast;
 
 import com.example.mtz_5555_transp.mymapapplication.Util.BuscarLocalTask;
 import com.example.mtz_5555_transp.mymapapplication.Util.MessageDialogFragment;
 import com.example.mtz_5555_transp.mymapapplication.Util.RotaTask;
 import com.google.android.gms.location.FusedLocationProviderClient;
-import com.google.android.gms.location.LocationCallback;
 import com.google.android.gms.location.LocationListener;
 import com.google.android.gms.location.LocationRequest;
 import com.google.android.gms.location.LocationServices;
@@ -75,15 +72,16 @@ public class MapsActivity extends AppCompatActivity implements OnMapReadyCallbac
 
     private Marker mMarkerLocalAtual;
     private ArrayList<LatLng> mRota;
-    private MessageDialogFragment mDialogEnderecos;
     private LoaderManager mLoaderManager;
     private LatLng mDestino;
     private GoogleMap mGoogleMap;
     private LatLng mOrigem;
-    private FusedLocationProviderClient mFusedLocationClient;
+    private BitmapDescriptor polylineOrigem;
+    private BitmapDescriptor polylineDestino;
     LoaderManager.LoaderCallbacks<List<LatLng>> mRotaCallback = new LoaderManager.LoaderCallbacks<List<LatLng>>() {
         @Override
         public Loader<List<LatLng>> onCreateLoader(int id, Bundle args) {
+            //Toast.makeText(MapsActivity.this, String.valueOf(mDestino.latitude), Toast.LENGTH_LONG).show();
             return new RotaTask(MapsActivity.this, mOrigem, mDestino);
         }
 
@@ -92,7 +90,11 @@ public class MapsActivity extends AppCompatActivity implements OnMapReadyCallbac
             new Handler().post(new Runnable() {
                 @Override
                 public void run() {
-                    mRota = new ArrayList<LatLng>(data);
+                    mRota = new ArrayList<>(data);
+                    //Toast.makeText(MapsActivity.this, String.valueOf(data.get(data.size()-1).latitude), Toast.LENGTH_LONG).show();
+                    if(mRota.size() > 0){
+                        int i = mRota.size();
+                    }
                     atualizarMapa();
                     ocultarProgresso();
                 }
@@ -124,6 +126,7 @@ public class MapsActivity extends AppCompatActivity implements OnMapReadyCallbac
         public void onLoaderReset(Loader<List<Address>> loader) {
         }
     };
+    private FusedLocationProviderClient mFusedLocationClient;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -137,6 +140,11 @@ public class MapsActivity extends AppCompatActivity implements OnMapReadyCallbac
         mFusedLocationClient = LocationServices.getFusedLocationProviderClient(this);
 
         mLoaderManager = getSupportLoaderManager();
+
+        polylineDestino = BitmapDescriptorFactory
+                .fromResource(R.drawable.ic_polyline_destino);
+        polylineOrigem = BitmapDescriptorFactory
+                .fromResource(R.drawable.ic_polyline_origem);
     }
 
     @Override
@@ -166,16 +174,9 @@ public class MapsActivity extends AppCompatActivity implements OnMapReadyCallbac
         } else if (estaCarregando(LOADER_ROTA) && mRota == null) {
             mLoaderManager.initLoader(LOADER_ROTA, null, mRotaCallback);
             exibirProgresso("Carregando rota...");
-
         }
         if (ActivityCompat.checkSelfPermission(this, Manifest.permission.ACCESS_FINE_LOCATION) != PackageManager.PERMISSION_GRANTED && ActivityCompat.checkSelfPermission(this, Manifest.permission.ACCESS_COARSE_LOCATION) != PackageManager.PERMISSION_GRANTED) {
-            // TODO: Consider calling
-            //    ActivityCompat#requestPermissions
-            // here to request the missing permissions, and then overriding
-            //   public void onRequestPermissionsResult(int requestCode, String[] permissions,
-            //                                          int[] grantResults)
-            // to handle the case where the user grants the permission. See the documentation
-            // for ActivityCompat#requestPermissions for more details.
+
             return;
         }
         mFusedLocationClient.getLastLocation().addOnSuccessListener(this, new OnSuccessListener<Location>() {
@@ -191,11 +192,7 @@ public class MapsActivity extends AppCompatActivity implements OnMapReadyCallbac
 
     private boolean estaCarregando(int loaderEndereco) {
         Loader<?> loader = mLoaderManager.getLoader(loaderEndereco);
-        if (loader != null && loader.isStarted()) {
-            return true;
-
-        }
-        return false;
+        return loader != null && loader.isStarted();
     }
 
     private void exibirProgresso(String msg) {
@@ -233,22 +230,23 @@ public class MapsActivity extends AppCompatActivity implements OnMapReadyCallbac
                     mDestino = new LatLng(
                             enderecoSelecionado.getLatitude(),
                             enderecoSelecionado.getLongitude());
-                    atualizarMapa();
+                    //atualizarMapa();
                     carregarRota();
                 }
             };
             AlertDialog.Builder builder = new AlertDialog.Builder(this);
             builder.setTitle("Selecione o destino")
                     .setItems(descricaoDosEnderecos, selecionarEnderecoClick);
-            mDialogEnderecos = new MessageDialogFragment();
+            MessageDialogFragment mDialogEnderecos = new MessageDialogFragment();
             mDialogEnderecos.setDialog(builder.create());
             mDialogEnderecos.show(getFragmentManager(), "DIALOG_ENDERECO_DESTINO");
         }
     }
 
     private void carregarRota() {
+        //Toast.makeText(MapsActivity.this, "Carregando rota...", Toast.LENGTH_SHORT).show();
         mRota = null;
-        mLoaderManager.initLoader(LOADER_ROTA, null, mRotaCallback);
+        mLoaderManager.restartLoader(LOADER_ROTA, null, mRotaCallback);
         exibirProgresso("Carregando rota...");
     }
 
@@ -267,14 +265,7 @@ public class MapsActivity extends AppCompatActivity implements OnMapReadyCallbac
         locationRequest.setFastestInterval(1000);
 
         if (ActivityCompat.checkSelfPermission(this, Manifest.permission.ACCESS_FINE_LOCATION) != PackageManager.PERMISSION_GRANTED && ActivityCompat.checkSelfPermission(this, Manifest.permission.ACCESS_COARSE_LOCATION) != PackageManager.PERMISSION_GRANTED) {
-            // TODO: Consider calling
-            //    ActivityCompat#requestPermissions
-            // here to request the missing permissions, and then overriding
-            //   public void onRequestPermissionsResult(int requestCode, String[] permissions,
-            //                                          int[] grantResults)
-            // to handle the case where the user grants the permission. See the documentation
-            // for ActivityCompat#requestPermissions for more details.
-            return;
+            //return;
         }
         //mFusedLocationClient.requestLocationUpdates(locationRequest, new LocationCallback(), new Looper());
     }
@@ -282,33 +273,24 @@ public class MapsActivity extends AppCompatActivity implements OnMapReadyCallbac
     private void atualizarMapa() {
         mGoogleMap.clear();
 
-        if (mOrigem != null) {
-            mGoogleMap.addMarker(new MarkerOptions().position(mOrigem).title("Local Atual"));
-        }
-
-        if (mDestino != null) {
-            mGoogleMap.addMarker(new MarkerOptions().position(mDestino).title("Destino"));
-        }
-        if (mOrigem != null) {
-            if (mDestino != null) {
-                LatLngBounds area = new LatLngBounds.Builder()
-                        .include(mOrigem)
-                        .include(mDestino)
-                        .build();
-                mGoogleMap.animateCamera(CameraUpdateFactory.newLatLngBounds(area, 50));
-            } else {
-                mGoogleMap.animateCamera(CameraUpdateFactory.newLatLngZoom(mOrigem, 17.0F));
-            }
-        }
         if (mRota != null && mRota.size() > 0) {
-            BitmapDescriptor icon = BitmapDescriptorFactory
-                    .fromResource(R.drawable.common_google_signin_btn_text_light_normal);
+            //Toast.makeText(MapsActivity.this, "Atualizando mapa com rota!", Toast.LENGTH_SHORT).show();
+            LatLngBounds area = new LatLngBounds.Builder()
+                    .include(mOrigem)
+                    .include(mDestino)
+                    .build();
+
+            mGoogleMap.addMarker(new MarkerOptions().position(mDestino).title("Destino").icon(polylineDestino));
+            mGoogleMap.animateCamera(CameraUpdateFactory.newLatLngBounds(area, 50));
+
             mMarkerLocalAtual = mGoogleMap.addMarker(new MarkerOptions()
                     .position(mDestino)
-                    .title("Destinho")
-                    .icon(icon)
+                    .title("Destino")
+                    .icon(polylineOrigem)
                     .position(mOrigem));
             iniciarDeteccaoDeLocal();
+
+            //Toast.makeText(MapsActivity.this, String.valueOf(mRota.get(mRota.size() - 1).latitude), Toast.LENGTH_LONG).show();
 
             PolylineOptions polylineOptions = new PolylineOptions()
                     .addAll(mRota)
@@ -316,12 +298,17 @@ public class MapsActivity extends AppCompatActivity implements OnMapReadyCallbac
                     .color(Color.RED)
                     .visible(true);
             mGoogleMap.addPolyline(polylineOptions);
+        } else {
+            if (mOrigem != null) {
+                //Toast.makeText(MapsActivity.this, "Atualizando mapa sem rota!", Toast.LENGTH_SHORT).show();
+                mGoogleMap.addMarker(new MarkerOptions().position(mOrigem).title("Local Atual"));
+                mGoogleMap.animateCamera(CameraUpdateFactory.newLatLngZoom(mOrigem, 17.0F));
+            }
         }
     }
 
     @OnClick(R.id.imgBtn_buscar)
     void onItemClicked(View view) {
-        Intent it;
         switch (view.getId()) {
             case R.id.imgBtn_buscar:
                 mBtnBuscar.setEnabled(false);
@@ -332,6 +319,7 @@ public class MapsActivity extends AppCompatActivity implements OnMapReadyCallbac
 
     @Override
     public void onLocationChanged(Location location) {
+        Toast.makeText(MapsActivity.this, "Localização alterada!", Toast.LENGTH_SHORT).show();
         mMarkerLocalAtual.setPosition(new LatLng(location.getLatitude(), location.getLongitude()));
     }
 }
