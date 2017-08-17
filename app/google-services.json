@@ -1,0 +1,42 @@
+{
+  "project_info": {
+    "project_number": "662959703068",
+    "firebase_url": "https://maps-app-7b5de.firebaseio.com",
+    "project_id": "maps-app-7b5de",
+    "storage_bucket": "maps-app-7b5de.appspot.com"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:662959703068:android:11100eff6e5dd1b2",
+        "android_client_info": {
+          "package_name": "com.example.mtz_5555_transp.mymapapplication"
+        }
+      },
+      "oauth_client": [
+        {
+          "client_id": "662959703068-m12cgfjnpcailf55ni60muue6pvkd38c.apps.googleusercontent.com",
+          "client_type": 3
+        }
+      ],
+      "api_key": [
+        {
+          "current_key": "AIzaSyD1MoiiRvIJxuUMh6at8dreJiUH-EMGLeQ"
+        }
+      ],
+      "services": {
+        "analytics_service": {
+          "status": 1
+        },
+        "appinvite_service": {
+          "status": 1,
+          "other_platform_oauth_client": []
+        },
+        "ads_service": {
+          "status": 2
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}
