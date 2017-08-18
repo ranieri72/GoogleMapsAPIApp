@@ -44,18 +44,24 @@ import com.google.android.gms.maps.model.Marker;
 import com.google.android.gms.maps.model.MarkerOptions;
 import com.google.android.gms.maps.model.PolylineOptions;
 import com.google.android.gms.tasks.OnSuccessListener;
+import com.google.firebase.database.DataSnapshot;
+import com.google.firebase.database.DatabaseError;
 import com.google.firebase.database.DatabaseReference;
 import com.google.firebase.database.FirebaseDatabase;
+import com.google.firebase.database.Query;
+import com.google.firebase.database.ValueEventListener;
 
+import java.text.SimpleDateFormat;
 import java.util.ArrayList;
 import java.util.Date;
 import java.util.List;
+import java.util.Locale;
 
 import butterknife.BindView;
 import butterknife.ButterKnife;
 import butterknife.OnClick;
 
-public class MapsActivity extends AppCompatActivity implements OnMapReadyCallback {//, LocationListener {
+public class MapsActivity extends AppCompatActivity implements OnMapReadyCallback {
 
     static final int LOADER_ROTA = 2;
     static final int LOADER_ENDERECO = 1;
@@ -76,8 +82,11 @@ public class MapsActivity extends AppCompatActivity implements OnMapReadyCallbac
 
     // Firebase Database
     private DatabaseReference mRoutesDatabaseReference;
+    private String key;
 
+    // Maps
     private ArrayList<LatLng> mRota;
+    private Marker mMarkerLocalAtual;
     private LatLng mDestino;
     private GoogleMap mGoogleMap;
     private LatLng mOrigem;
@@ -86,6 +95,26 @@ public class MapsActivity extends AppCompatActivity implements OnMapReadyCallbac
     private boolean mRequestingLocationUpdates;
 
     private LoaderManager mLoaderManager;
+    LoaderManager.LoaderCallbacks<List<Address>> mBuscaLocalCallback = new LoaderManager.LoaderCallbacks<List<Address>>() {
+        @Override
+        public Loader<List<Address>> onCreateLoader(int id, Bundle args) {
+            return new BuscarLocalTask(MapsActivity.this, mEdtLocal.getText().toString());
+        }
+
+        @Override
+        public void onLoadFinished(Loader<List<Address>> loader, final List<Address> data) {
+            new Handler().post(new Runnable() {
+                @Override
+                public void run() {
+                    exibirListaEnderecos(data);
+                }
+            });
+        }
+
+        @Override
+        public void onLoaderReset(Loader<List<Address>> loader) {
+        }
+    };
     private BitmapDescriptor polylineOrigem;
     private BitmapDescriptor polylineDestino;
     LoaderManager.LoaderCallbacks<List<LatLng>> mRotaCallback = new LoaderManager.LoaderCallbacks<List<LatLng>>() {
@@ -113,26 +142,6 @@ public class MapsActivity extends AppCompatActivity implements OnMapReadyCallbac
 
         }
     };
-    LoaderManager.LoaderCallbacks<List<Address>> mBuscaLocalCallback = new LoaderManager.LoaderCallbacks<List<Address>>() {
-        @Override
-        public Loader<List<Address>> onCreateLoader(int id, Bundle args) {
-            return new BuscarLocalTask(MapsActivity.this, mEdtLocal.getText().toString());
-        }
-
-        @Override
-        public void onLoadFinished(Loader<List<Address>> loader, final List<Address> data) {
-            new Handler().post(new Runnable() {
-                @Override
-                public void run() {
-                    exibirListaEnderecos(data);
-                }
-            });
-        }
-
-        @Override
-        public void onLoaderReset(Loader<List<Address>> loader) {
-        }
-    };
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -149,15 +158,30 @@ public class MapsActivity extends AppCompatActivity implements OnMapReadyCallbac
         mLocationCallback = new LocationCallback() {
             @Override
             public void onLocationResult(LocationResult locationResult) {
-                mRoutesDatabaseReference.push().setValue(locationResult.getLastLocation());
-                //mRoutesDatabaseReference.push().setValue(new LatLng(locationResult.getLastLocation().getLatitude(), locationResult.getLastLocation().getLongitude()));
+                Location location = locationResult.getLastLocation();
+                mRoutesDatabaseReference.child("routes").child(key).push().setValue(location);
+                //mRoutesDatabaseReference.child("routes").child(key).push().setValue(new LatLng(locationResult.getLastLocation().getLatitude(), locationResult.getLastLocation().getLongitude()));
 
-//                for (Location location : locationResult.getLocations()) {
-//                }
-                Date date = new Date(locationResult.getLastLocation().getTime());
-                Toast.makeText(MapsActivity.this, locationResult.getLastLocation().getProvider()
-                        + " Data: " + date
-                        + " Speed: " + String.valueOf(((locationResult.getLastLocation().getSpeed() * 3600) / 1000)), Toast.LENGTH_SHORT).show();
+                mMarkerLocalAtual.setPosition(new LatLng(location.getLatitude(), location.getLongitude()));
+
+                Location destino = new Location("destino");
+                destino.setLatitude(mDestino.latitude);
+                destino.setLongitude(mDestino.longitude);
+                if (location.distanceTo(destino) < 100) {
+                    stopLocationUpdates();
+                    //mRota = null;
+                    exibirRota(key);
+                    atualizarMapa();
+                    Toast.makeText(MapsActivity.this, "Jornada terminada.", Toast.LENGTH_SHORT).show();
+                }
+
+                Date date = new Date(location.getTime());
+                SimpleDateFormat formatter = new SimpleDateFormat("dd/MM/yy h:mm:ss", Locale.getDefault());
+                String format = formatter.format(date);
+
+                Toast.makeText(MapsActivity.this, location.getProvider()
+                        + " Data: " + format
+                        + " Speed: " + String.valueOf(((location.getSpeed() * 3600) / 1000)), Toast.LENGTH_SHORT).show();
             }
         };
 
@@ -168,7 +192,7 @@ public class MapsActivity extends AppCompatActivity implements OnMapReadyCallbac
         polylineOrigem = BitmapDescriptorFactory
                 .fromResource(R.drawable.ic_polyline_origem);
 
-        mRoutesDatabaseReference = FirebaseDatabase.getInstance().getReference().child("routes");
+        mRoutesDatabaseReference = FirebaseDatabase.getInstance().getReference().child("journeys");
     }
 
     private void updateValuesFromBundle(Bundle savedInstanceState) {
@@ -294,6 +318,23 @@ public class MapsActivity extends AppCompatActivity implements OnMapReadyCallbac
         mLayoutProgresso.setVisibility(View.GONE);
     }
 
+    private void exibirRota(String key) {
+        Query query1 = mRoutesDatabaseReference.child("routes").child(key);
+        query1.addListenerForSingleValueEvent(new ValueEventListener() {
+            @Override
+            public void onDataChange(DataSnapshot dataSnapshot) {
+                LatLng latLng = new LatLng(dataSnapshot.getValue(Location.class).getLatitude(),
+                        dataSnapshot.getValue(Location.class).getLongitude());
+                mRota.add(latLng);
+            }
+
+            @Override
+            public void onCancelled(DatabaseError databaseError) {
+
+            }
+        });
+    }
+
     private void exibirListaEnderecos(final List<Address> enderecosEncontrados) {
         ocultarProgresso();
         mBtnBuscar.setEnabled(true);
@@ -334,10 +375,12 @@ public class MapsActivity extends AppCompatActivity implements OnMapReadyCallbac
     }
 
     private void carregarRota() {
-        //Toast.makeText(MapsActivity.this, "Carregando rota...", Toast.LENGTH_SHORT).show();
+
         mRota = null;
         mLoaderManager.restartLoader(LOADER_ROTA, null, mRotaCallback);
         exibirProgresso("Carregando rota...");
+        key = mRoutesDatabaseReference.child("routes").push().getKey();
+        Toast.makeText(MapsActivity.this, "Nova key: " + key, Toast.LENGTH_LONG).show();
     }
 
     private void buscarEndereco() {
@@ -379,8 +422,7 @@ public class MapsActivity extends AppCompatActivity implements OnMapReadyCallbac
 
             mGoogleMap.addMarker(new MarkerOptions().position(mDestino).title("Destino").icon(polylineDestino));
             mGoogleMap.animateCamera(CameraUpdateFactory.newLatLngBounds(area, 50));
-
-            Marker mMarkerLocalAtual = mGoogleMap.addMarker(new MarkerOptions()
+            mMarkerLocalAtual = mGoogleMap.addMarker(new MarkerOptions()
                     .position(mDestino)
                     .title("Destino")
                     .icon(polylineOrigem)
@@ -413,10 +455,4 @@ public class MapsActivity extends AppCompatActivity implements OnMapReadyCallbac
                 break;
         }
     }
-
-//    @Override
-//    public void onLocationChanged(Location location) {
-//        Toast.makeText(MapsActivity.this, "Localização alterada!", Toast.LENGTH_SHORT).show();
-//        mMarkerLocalAtual.setPosition(new LatLng(location.getLatitude(), location.getLongitude()));
-//    }
 }
