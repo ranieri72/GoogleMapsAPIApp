@@ -4,7 +4,6 @@ import android.Manifest;
 import android.content.DialogInterface;
 import android.content.Intent;
 import android.content.pm.PackageManager;
-import android.graphics.Bitmap;
 import android.graphics.Color;
 import android.location.Address;
 import android.location.Location;
@@ -31,7 +30,6 @@ import android.widget.Toast;
 import com.example.mtz_5555_transp.mymapapplication.Util.BuscarLocalTask;
 import com.example.mtz_5555_transp.mymapapplication.Util.MessageDialogFragment;
 import com.example.mtz_5555_transp.mymapapplication.Util.RotaTask;
-import com.example.mtz_5555_transp.mymapapplication.Util.StaticBitmapTask;
 import com.google.android.gms.location.FusedLocationProviderClient;
 import com.google.android.gms.location.LocationCallback;
 import com.google.android.gms.location.LocationRequest;
@@ -148,38 +146,6 @@ public class MapsActivity extends AppCompatActivity implements OnMapReadyCallbac
         }
     };
 
-    LoaderManager.LoaderCallbacks<Bitmap> mBitmapCallback = new LoaderManager.LoaderCallbacks<Bitmap>() {
-        @Override
-        public Loader<Bitmap> onCreateLoader(int id, Bundle args) {
-            //Toast.makeText(MapsActivity.this, String.valueOf(mDestino.latitude), Toast.LENGTH_LONG).show();
-            return new StaticBitmapTask(MapsActivity.this, mOrigem, mDestino);
-        }
-
-        @Override
-        public void onLoadFinished(Loader<Bitmap> loader, final Bitmap bitmap) {
-            new Handler().post(new Runnable() {
-                @Override
-                public void run() {
-
-//                    ByteArrayOutputStream stream = new ByteArrayOutputStream();
-//                    bitmap.compress(Bitmap.CompressFormat.PNG, 100, stream);
-//                    byte[] byteArray = stream.toByteArray();
-
-
-                    Intent it = new Intent(MapsActivity.this, StaticMapActivity.class);
-                    it.putExtra("bitmap", bitmap);
-                    ocultarProgresso();
-                    startActivityForResult(it, 0);
-                }
-            });
-        }
-
-        @Override
-        public void onLoaderReset(Loader<Bitmap> loader) {
-
-        }
-    };
-
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
@@ -242,8 +208,18 @@ public class MapsActivity extends AppCompatActivity implements OnMapReadyCallbac
     public boolean onOptionsItemSelected(MenuItem item) {
         switch (item.getItemId()) {
             case R.id.action_static:
-                mLoaderManager.initLoader(LOADER_ROTA, null, mRotaCallback);
-                exibirProgresso("Carregando static map...");
+//                exibirProgresso("Carregando static map...");
+//                StaticBitmapTask task = new StaticBitmapTask();//
+//                Bitmap bitmap = task.execute(mOrigem, mOrigem);
+
+                Intent it = new Intent(MapsActivity.this, StaticMapActivity.class);
+                it.putExtra("mOrigem", mOrigem);
+                it.putExtra("mDestino", mDestino);
+//                ocultarProgresso();
+                startActivity(it);
+
+                //mLoaderManager.initLoader(LOADER_ROTA, null, mBitmapCallback);
+
                 break;
         }
         return super.onOptionsItemSelected(item);

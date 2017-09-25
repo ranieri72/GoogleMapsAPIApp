@@ -1,8 +1,5 @@
 package com.example.mtz_5555_transp.mymapapplication.Util;
 
-import android.graphics.Bitmap;
-import android.graphics.BitmapFactory;
-
 import com.google.android.gms.maps.model.LatLng;
 import com.google.maps.android.PolyUtil;
 
@@ -13,7 +10,6 @@ import org.json.JSONObject;
 import java.io.ByteArrayOutputStream;
 import java.io.IOException;
 import java.io.InputStream;
-import java.net.HttpURLConnection;
 import java.net.MalformedURLException;
 import java.net.URL;
 import java.util.ArrayList;
@@ -70,26 +66,14 @@ public class RotaHttp {
         return posicoes;
     }
 
-    public static Bitmap carregarBitmap(LatLng orig, LatLng dest) {
-        Bitmap bmp = null;
-        try {
-            String urlRota = String.format(Locale.US,
-                    "http://maps.googleapis.com/maps/api/staticmap?" +
-                            "origin=%f,%f&destination=%f,%f&",
-                    orig.latitude, orig.longitude,
-                    dest.latitude, dest.longitude);
-
-            URL url = new URL(urlRota);
-            HttpURLConnection connection = (HttpURLConnection) url.openConnection();
-            connection.setDoInput(true);
-            connection.connect();
-            InputStream in = connection.getInputStream();
-            bmp = BitmapFactory.decodeStream(in);
-            in.close();
-        } catch (IOException e1) {
-            e1.printStackTrace();
-        }
-        return bmp;
+    public static String urlStaticMap(LatLng orig, LatLng dest) {
+        return String.format(Locale.US,
+                "http://maps.googleapis.com/maps/api/staticmap?" +
+                        "size=1000x1000&" +
+                        "markers=color:blue%%7Clabel:O%%7C%f,%f&" +
+                        "markers=color:red%%7Clabel:D%%7C%f,%f",
+                orig.latitude, orig.longitude,
+                dest.latitude, dest.longitude);
     }
 
     private static String bytesParaString(InputStream is) throws IOException {

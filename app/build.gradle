@@ -32,9 +32,14 @@ dependencies {
     // Firebase Database
     compile 'com.google.firebase:firebase-database:11.0.4'
 
+    // Ion
+    compile 'com.koushikdutta.ion:ion:2.0.7'
+
+    // Maps
     compile 'com.google.android.gms:play-services-maps:11.0.4'
     compile 'com.google.android.gms:play-services-location:11.0.4'
     compile 'com.google.maps.android:android-maps-utils:0.4+'
+
     testCompile 'junit:junit:4.12'
     annotationProcessor 'com.jakewharton:butterknife-compiler:8.8.1'
 }
